@@ -94,7 +94,7 @@ contract Encoding {
     // since we know the contracts will be compiled down to binary - we can populate the data value of transaction ourselves with the binary the code will use
     // data of function call is what to send to the To address
 
-    // How do we send transactions that vall functions with just the data field populated?
+    // How do we send transactions that call functions with just the data field populated?
     // How do we populate the data field?
 
     // Solidity has low-level keywords, "staticcall" and "call"
