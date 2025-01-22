@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.18;
+
+pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/proxy/Proxy.sol";
 
@@ -19,19 +20,20 @@ contract SmallProxy is Proxy {
         }
     }
 
-    // helper function
     function getDataToTransact(uint256 numberToUpdate) public pure returns (bytes memory) {
         return abi.encodeWithSignature("setValue(uint256)", numberToUpdate);
     }
 
-    function readStorage() public view returns (uint256 valueAtStorageSlotZero) {
+    function readStorage() public view returns (uint256 valueAtStorageSlot0) {
         assembly {
-            valueAtStorageSlotZero := sload(0)
+            valueAtStorageSlot0 := sload(0)
         }
     }
 }
 
-contract ImplementationA {
+// When someone calls SmallProxy -> it will delegatecall it to implementation contract and then save storage in Proxy contract
+
+contract implementationA {
     uint256 public value;
 
     function setValue(uint256 newValue) public {
@@ -39,17 +41,10 @@ contract ImplementationA {
     }
 }
 
-contract ImplementationB {
+contract implementationB {
     uint256 public value;
 
     function setValue(uint256 newValue) public {
         value = newValue + 2;
     }
 }
-
-// function setImplementation(){}
-// Transparent Proxy -> Ok, only admins can call functions on the proxy
-// anyone else ALWAYS gets sent to the fallback contract.
-
-// UUPS -> Where all upgrade logic is in the implementation contract, and
-// you can't have 2 functions with the same function selector.

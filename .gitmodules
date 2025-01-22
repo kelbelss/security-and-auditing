@@ -1,3 +1,6 @@
 [submodule "Upgradable Smart Contracts/lib/forge-std"]
 	path = Upgradable Smart Contracts/lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
+[submodule "Upgradable Smart Contracts/lib/openzeppelin-contracts"]
+	path = Upgradable Smart Contracts/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
