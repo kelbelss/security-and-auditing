@@ -5,6 +5,8 @@
 # High
 
 - Found a DoS 
+- Reentrancy in `PuppyRaffle::refund`
+- Weak Randomness in `PuppyRaffle::selectWinner`
 
 # Informationals 
 
