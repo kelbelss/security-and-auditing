@@ -4,11 +4,13 @@
 
 # High
 
-- Found a DoS 
+- Found a DoS in `PuppyRaffle::enterRaffle`
 - Reentrancy in `PuppyRaffle::refund`
 - Weak Randomness in `PuppyRaffle::selectWinner` in the winner and rarity functionality
 - Unsafe Casting and Intger Overflow in `PuppyRaffle::selectWinner`
 - Mishandling of ETH in `PuppyRaffle::withdrawFees`
+- Functions missing events?
+- `PuppyRaffle::_isActivePlayer` is not used - no impact or liklihood but it's a waste of gas and is clutter
 
 # Informationals 
 
