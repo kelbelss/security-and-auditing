@@ -6,7 +6,9 @@
 
 - Found a DoS 
 - Reentrancy in `PuppyRaffle::refund`
-- Weak Randomness in `PuppyRaffle::selectWinner`
+- Weak Randomness in `PuppyRaffle::selectWinner` in the winner and rarity functionality
+- Unsafe Casting and Intger Overflow in `PuppyRaffle::selectWinner`
+- Mishandling of ETH in `PuppyRaffle::withdrawFees`
 
 # Informationals 
 
