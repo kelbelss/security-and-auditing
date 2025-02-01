@@ -94,6 +94,13 @@ contract ReentrancyAttacker {
         entranceFee = puppyRaffle.entranceFee();
     }
 
+    function testCanEnterRaffle() public {
+        address[] memory players = new address[](1);
+        players[0] = playerOne;
+        puppyRaffle.enterRaffle{value: entranceFee}(players);
+        assertEq(puppyRaffle.players(0), playerOne);
+    }
+
     function attack() external payable {
         address[] memory players = new address[](1);
         players[0] = address(this);
