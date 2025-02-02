@@ -16,3 +16,9 @@
 
 > bad variable names (add i_ or s_, or CAPITALS)
 `PuppyRaffle::entranceFee` is immutable, and should be `i_entranceFee`, or `ENTRANCE_FEE`
+
+
+# Gas
+
+- Constants that should be declared as much 
+- Too many storage calls, rather declare a variable 
