@@ -12,6 +12,10 @@
 - Functions missing events?
 - `PuppyRaffle::_isActivePlayer` is not used - no impact or liklihood but it's a waste of gas and is clutter
 
+# Medium
+
+- Centralised (always include for private audits)
+
 # Informationals 
 
 > bad variable names (add i_ or s_, or CAPITALS)
