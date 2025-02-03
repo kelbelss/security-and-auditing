@@ -20,7 +20,8 @@
 
 > bad variable names (add i_ or s_, or CAPITALS)
 `PuppyRaffle::entranceFee` is immutable, and should be `i_entranceFee`, or `ENTRANCE_FEE`
-
+- Stop using literals (magic numbers), use constants
+- Add index fields to events
 
 # Gas
 
