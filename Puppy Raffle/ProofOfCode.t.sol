@@ -57,6 +57,40 @@ contract PuppyRaffleTest is Test {
         assert(gasUsedFirst < gasUsedSecond);
     }
 
+    function test_TotalFeesOverflow() public playersEntered {
+        // finish raffle of 4 to collect fees
+        vm.warp(block.timestamp + duration + 1);
+        vm.roll(block.number + 1);
+        puppyRaffle.selectWinner();
+        uint256 startingTotalFees = puppyRaffle.totalFees();
+        // startingTotalFees = 8e18
+
+        // have 89 players enter a new raffle
+        uint256 playersNum = 89;
+        address[] memory players = new address[](playersNum);
+        for (uint256 i = 0; i < playersNum; i++) {
+            players[i] = address(i);
+        }
+        puppyRaffle.enterRaffle{value: entranceFee * players.length}(players);
+
+        // end the raffle
+        vm.warp(block.timestamp + duration + 1);
+        vm.roll(block.number + 1);
+
+        // here is where issue arises - there are feweer fees even though second raffle is complete
+        puppyRaffle.selectWinner();
+
+        uint256 endingTotalFees = puppyRaffle.totalFees();
+        console.log("Starting Total Fees: ", startingTotalFees);
+        console.log("Ending Total Fees: ", endingTotalFees);
+        assert(endingTotalFees < startingTotalFees);
+
+        // also cannot withdraw fees because of the require check
+        vm.prank(puppyRaffle.feeAddress());
+        vm.expectRevert("PuppyRaffle: There are currently players active!");
+        puppyRaffle.withdrawFees();
+    }
+
     function test_reentrancyRefund() public {
         address[] memory players = new address[](4);
         players[0] = playerOne;
