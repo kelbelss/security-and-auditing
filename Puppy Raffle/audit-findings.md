@@ -126,8 +126,7 @@ And this contract as well.
     }
 ```
 
-
-### [H-2] Wek randomness in `PuppyRaffle::selectWinner` allows users to influence or predict the winner and influence or predict the winning puppy NFT
+### [H-2] Weak randomness in `PuppyRaffle::selectWinner` allows users to influence or predict the winner and influence or predict the winning puppy NFT
 
 **Description:** Hashing `msg.sender`, `block.timestamp`, and `block.difficulty` together creates a predictible final number. A predictable number is not a random number. Malicious users can manipulate these values or know them ahead of time to choose the winner of the raffle themselves.
 
@@ -145,9 +144,84 @@ Using on-chain values as a randomness seed is a [well known attack vector](http:
 
 **Recommended Mitigation:** Consider using a cryptographically provable random number generator such as Chainlink VRF.
 
+### [H-3] Integer overflow of `PuppyRaffle::totalFees` loses fees
+
+**Description:** In Solidity versions prior to `0.8.0` integers were subject to integer overflows.
+
+```javascript
+    uint64 myVar = type(uint64).max
+    // 18446744073709551615
+    myVar = myVar + 1;
+    // myVar will be 0
+```
+
+**Impact:** In `PuppyRaffle::selectWinner` `totalFees` are accumulated for the `feeAddress` to collect later in `PuppyRaffle::withdrawFees`. However, if the `totalFees` variable overflows, the `feeAddress` may not collect the correct amount of fees, leaving the fees permanently stuck in the contract. (withdraw require would be done in a separate write up in competitive audits)
+
+**Proof of Concept:**
+
+1. We conclude a raffle of 4 players
+2. We then have 89 players enter a new raffle, and conclude the raffle
+3. `totalFees` will overflow
+4. you will not be able to withdraw, due to the require in `PuppyRaffle::withdrawFees` as `totalFees` will not match the `address(this).balance`
+
+```javascript
+    require(address(this).balance == uint256(totalFees), "PuppyRaffle: There are currently players active!");
+```
+
+Place the following test into `PuppyRaffleTest.t.sol`.
+
+<details>
+<summary>Test Code</summary>
+
+```javascript 
+    function test_TotalFeesOverflow() public playersEntered {
+        // finish raffle of 4 to collect fees
+        vm.warp(block.timestamp + duration + 1);
+        vm.roll(block.number + 1);
+        puppyRaffle.selectWinner();
+        uint256 startingTotalFees = puppyRaffle.totalFees();
+        // startingTotalFees = 8e18
+
+        // have 89 players enter a new raffle
+        uint256 playersNum = 89;
+        address[] memory players = new address[](playersNum);
+        for (uint256 i = 0; i < playersNum; i++) {
+            players[i] = address(i);
+        }
+        puppyRaffle.enterRaffle{value: entranceFee * players.length}(players);
+
+        // end the raffle
+        vm.warp(block.timestamp + duration + 1);
+        vm.roll(block.number + 1);
+
+        // here is where issue arises - there are feweer fees even though second raffle is complete
+        puppyRaffle.selectWinner();
+
+        uint256 endingTotalFees = puppyRaffle.totalFees();
+        console.log("Starting Total Fees: ", startingTotalFees);
+        console.log("Ending Total Fees: ", endingTotalFees);
+        assert(endingTotalFees < startingTotalFees);
+
+        // also cannot withdraw fees because of the require check
+        vm.prank(puppyRaffle.feeAddress());
+        vm.expectRevert("PuppyRaffle: There are currently players active!");
+        puppyRaffle.withdrawFees();
+    }
+```
+
+</details>
+
+**Recommended Mitigation:** There are a few possible mitigations:
+
+1. Use a newer version of Solidity, and a `uint256` instead of `uint64` for `PuppyRaffle::totalFees`
+2. You could also use the `SafeMath` library from OpenZeppelin for version `0.7.6` of Solidity , however you would still have a hard time with the `uint64` if too many fees are collected.
+3. Remove the balance check from `PuppyRaffle::withdrawFees`
+
+There are more attack vectors with that final require so we recommend removing it regardless.
+
 # Medium
 
-### [M-#] Looping through players array to check for duplicates in `PuppyRaffle::enterRaffle` is a potential denial of service (DoS) attack, increamenting gas costs for future entrants.
+### [M-1] Looping through players array to check for duplicates in `PuppyRaffle::enterRaffle` is a potential denial of service (DoS) attack, increamenting gas costs for future entrants.
 
 **Description:** The `PuppyRaffle::enterRaffle` function loops through the players array to check for duplicates. However, the longer the `PuppyRaffle::players` array is, the more checks a new player will have to make. This means the gas cost for players who enter when the raffle starts will be dramatically lower than those who enter later. Every additional address in the `players` array, is an additional check the loop will have to make.
 
@@ -230,6 +304,84 @@ function test_denial_of_service() public {
 
 3. Alternatively, you could use OpenZeppelin's `EnumerableSet` library. (link it)
 
+### [M-2] Unsafe cast of `PuppyRaffle::fee` loses fees
+
+**Description:** In `PuppyRaffle::selectWinner` their is a type cast of a `uint256` to a `uint64`. This is an unsafe cast, and if the `uint256` is larger than `type(uint64).max`, the value will be truncated. 
+
+```javascript
+    function selectWinner() external {
+        require(block.timestamp >= raffleStartTime + raffleDuration, "PuppyRaffle: Raffle not over");
+        require(players.length > 0, "PuppyRaffle: No players in raffle");
+
+        uint256 winnerIndex = uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp, block.difficulty))) % players.length;
+        address winner = players[winnerIndex];
+        uint256 fee = totalFees / 10;
+        uint256 winnings = address(this).balance - fee;
+@>      totalFees = totalFees + uint64(fee);
+        players = new address[](0);
+        emit RaffleWinner(winner, winnings);
+    }
+```
+
+The max value of a `uint64` is `18446744073709551615`. In terms of ETH, this is only ~`18` ETH. Meaning, if more than 18ETH of fees are collected, the `fee` casting will truncate the value. 
+
+**Impact:** This means the `feeAddress` will not collect the correct amount of fees, leaving fees permanently stuck in the contract.
+
+**Proof of Concept:** 
+
+1. A raffle proceeds with a little more than 18 ETH worth of fees collected
+2. The line that casts the `fee` as a `uint64` hits
+3. `totalFees` is incorrectly updated with a lower amount
+
+You can replicate this in foundry's chisel by running the following:
+
+```javascript
+uint256 max = type(uint64).max
+uint256 fee = max + 1
+uint64(fee)
+// prints 0
+```
+
+**Recommended Mitigation:** Set `PuppyRaffle::totalFees` to a `uint256` instead of a `uint64`, and remove the casting. 
+
+```diff
+-   uint64 public totalFees = 0;
++   uint256 public totalFees = 0;
+.
+    function selectWinner() external {
+        require(block.timestamp >= raffleStartTime + raffleDuration, "PuppyRaffle: Raffle not over");
+        require(players.length >= 4, "PuppyRaffle: Need at least 4 players");
+        uint256 winnerIndex =
+            uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp, block.difficulty))) % players.length;
+        address winner = players[winnerIndex];
+        uint256 totalAmountCollected = players.length * entranceFee;
+        uint256 prizePool = (totalAmountCollected * 80) / 100;
+        uint256 fee = (totalAmountCollected * 20) / 100;
+-       totalFees = totalFees + uint64(fee);
++       totalFees = totalFees + fee;
+```
+
+### [M-3] Smart contract wallets raffle winners without a `receive` or `fallback` function will block the start of a new contest.
+
+**Description:** The `PuppyRaffle::selectWinner` function is responsible for resetting the lottery. However, if the winner is a smart contract wallet that rejects payments, the lottery would not be able to restart.
+
+Users could easily call the `selectWinner` function again and non-wallet entrants could enter, but it could cost a lot due to duplicate check and a lottery reset could get very challenging. 
+
+**Impact:** The `PuppyRaffle::selectWinner` function could revert many times, making a lottery reset difficult. 
+
+Also, true winners would not get paid out and someone else could take their money.
+
+**Proof of Concept:**
+
+1. 10 smart contract wallets enter the lottery without a fallback or receive function.
+2. The lottery ends
+3. The `selectWinner` function wouldn't work, even though the lottery is over!
+
+**Recommended Mitigation:** There are a few options to mitigate this issue.
+
+1. Do not allow smart contract wallet entrants (not recommended)
+2. Create a mapping of addresses -> payout so winners can pull their funds out themselves with a `claimPrize` function, putting the onus on the winner to claim their prize. (Recommended)
+
 # Low
 
 ### [L-1] `PuppyRaffle::getActivePlayerIndex` returns 0 for non-existant players and for players at index 0, causing players at index 0 to indirectly think they have not entered the raffle. 
@@ -287,10 +439,6 @@ Everytime you call `players.length` you read from storage, as opposed to memory 
     }
 ```
 
-
-
-
-
 # Informational
 
 ### [I-1] Solidity pragma should be specific, not wide
@@ -338,13 +486,23 @@ It's best to keep code clean and follow CEI.
 +        require(success, "PuppyRaffle: Failed to send prize pool to winner");
 ```
 
-### [S-#] Title (ROOT CAUSE + IMPACT)
+### [I-5] Use of "magic" numbers is discouraged
 
-**Description:** 
+It can be confusing to see number literals in a codebase, and it's much more readable if the numbers are given a name.
 
-**Impact:** 
+Examples:
+```javascript
+        uint256 prizePool = (totalAmountCollected * 80) / 100;
+        uint256 fee = (totalAmountCollected * 20) / 100;
+```
+Instead you could use:
+```javascript
+        uint256 public constant PRIZE_POOL_PERCENTAGE = 80;
+        uint256 public constant FEE_PERCENTAGE = 20;
+        uint256 public constant POOL_PRECISION = 100;
+```
 
-**Proof of Concept:**
+### [I-6] State changes are missing events 
 
-**Recommended Mitigation:** 
+### [I-7] `PuppyRaffle::isActivePlayer` is never used and should be removed
 
