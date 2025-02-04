@@ -22,6 +22,7 @@
 `PuppyRaffle::entranceFee` is immutable, and should be `i_entranceFee`, or `ENTRANCE_FEE`
 - Stop using literals (magic numbers), use constants
 - Add index fields to events
+- Improve test coverage! (does not matter for competitive audits)
 
 # Gas
 
