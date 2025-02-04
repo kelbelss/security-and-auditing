@@ -126,6 +126,25 @@ And this contract as well.
     }
 ```
 
+
+### [H-2] Wek randomness in `PuppyRaffle::selectWinner` allows users to influence or predict the winner and influence or predict the winning puppy NFT
+
+**Description:** Hashing `msg.sender`, `block.timestamp`, and `block.difficulty` together creates a predictible final number. A predictable number is not a random number. Malicious users can manipulate these values or know them ahead of time to choose the winner of the raffle themselves.
+
+*Note:* This means users could front-run this function and call `refund` if they see they are not the winner.
+
+**Impact:** Any user can influence the winner of the raffle, winning the money and selecting `rarest` puppy. Making the entire raffle worthless if it becomes a gas war as to who wins the raffles.
+
+**Proof of Concept:**
+
+1. Validators can know ahead of time the `block.timestamp` and `block.difficulty` and use that to predict when/how to participate. See the [blog post on prevrandao](https://soliditydeveloper.com/prevrandao). `block.difficulty` was recently replaced with prevandao. 
+2. Users can manipulate their `msg.sender` value to result in their address being used to generate the winner.
+3. Users can revert their `selectWinner` transaction if they don't like the winner or resulting puppy.
+
+Using on-chain values as a randomness seed is a [well known attack vector](http://betterprogramming.pub/how-to-generate-truly-random-numbers-in-solidity-and-blockchain-9ced6472dbdf) in the blockchain space.
+
+**Recommended Mitigation:** Consider using a cryptographically provable random number generator such as Chainlink VRF.
+
 # Medium
 
 ### [M-#] Looping through players array to check for duplicates in `PuppyRaffle::enterRaffle` is a potential denial of service (DoS) attack, increamenting gas costs for future entrants.
@@ -307,9 +326,17 @@ Check for `address(0)` when assigning values to address state variables.
 
 </details>
 
+### [I-4] `PuppyRaffle::selectWinner` does not follow CEI, which is not a best practice
 
+It's best to keep code clean and follow CEI.
 
-
+```diff 
+-        (bool success,) = winner.call{value: prizePool}("");
+-        require(success, "PuppyRaffle: Failed to send prize pool to winner");
+         _safeMint(winner, tokenId);
++        (bool success,) = winner.call{value: prizePool}("");
++        require(success, "PuppyRaffle: Failed to send prize pool to winner");
+```
 
 ### [S-#] Title (ROOT CAUSE + IMPACT)
 
