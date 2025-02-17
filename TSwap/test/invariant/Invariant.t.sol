@@ -47,10 +47,10 @@ contract Invariant is StdInvariant, Test {
         // set up handler
         handler = new Handler(pool);
         bytes4[] memory selectors = new bytes4[](2);
-        selectors[0] = Handler.deposit.selector;
-        selectors[1] = Handler.swapPoolTokenForWethBasedOnOutputWeth.selector;
+        selectors[0] = handler.deposit.selector;
+        selectors[1] = handler.swapPoolTokenForWethBasedOnOutputWeth.selector;
 
-        targetSelector(FuzzSelector({target: address(handler), selectors: selectors}));
+        targetSelector(FuzzSelector({addr: address(handler), selectors: selectors}));
         targetContract(address(handler));
     }
 
