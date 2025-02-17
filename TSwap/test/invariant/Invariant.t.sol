@@ -16,7 +16,6 @@ contract Invariant is StdInvariant, Test {
     // need the contracts
     PoolFactory factory; // this factory could make mulitple pools - we use one
     TSwapPool pool; // poolToken/WETH
-
     Handler handler;
 
     // int to set X and Y value
@@ -44,9 +43,18 @@ contract Invariant is StdInvariant, Test {
 
         // deposit into the pool
         pool.deposit(uint256(STARTING_Y), uint256(STARTING_Y), uint256(STARTING_X), uint64(block.timestamp));
+
+        // set up handler
+        handler = new Handler(pool);
+        bytes4[] memory selectors = new bytes4[](2);
+        selectors[0] = Handler.deposit.selector;
+        selectors[1] = Handler.swapPoolTokenForWethBasedOnOutputWeth.selector;
+
+        targetSelector(FuzzSelector({target: address(handler), selectors: selectors}));
+        targetContract(address(handler));
     }
 
-    function statefulFuzz_constantProductFormulaStaysTheSameY() public {
-        assertEq(handler.actualDeltaY(), handler.expectedDeltaY());
+    function statefulFuzz_constantProductFormulaStaysTheSame() public {
+        assertEq(handler.actualDeltaX(), handler.expectedDeltaX());
     }
 }
