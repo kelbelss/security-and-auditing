@@ -88,6 +88,31 @@ Also stop using magic numbers.
         _swap(inputToken, inputAmount, outputToken, outputAmount);
 ```
 
+### [H-4] `TSwapPool::sellPoolTokens` mismatches input and output tokens causing users to receive the incorrect amount of tokens
+
+**Description:** The `sellPoolTokens` function is intended to allow users to easily sell pool tokens and receive WETH in exchange. Users indicate how many pool tokens they're willing to sell in the `poolTokenAmount` parameter. However, the function currently miscalculaes the swapped amount. 
+
+This is due to the fact that the `swapExactOutput` function is called, whereas the `swapExactInput` function is the one that should be called. Because users specify the exact amount of input tokens, not output. 
+
+**Impact:** Users will swap the wrong amount of tokens, which is a severe disruption of protcol functionality. 
+
+**Recommended Mitigation:** 
+
+Consider changing the implementation to use `swapExactInput` instead of `swapExactOutput`. Note that this would also require changing the `sellPoolTokens` function to accept a new parameter (ie `minWethToReceive` to be passed to `swapExactInput`)
+
+```diff
+    function sellPoolTokens(
+        uint256 poolTokenAmount,
++       uint256 minWethToReceive,    
+        ) external returns (uint256 wethAmount) {
+-        return swapExactOutput(i_poolToken, i_wethToken, poolTokenAmount, uint64(block.timestamp));
++        return swapExactInput(i_poolToken, poolTokenAmount, i_wethToken, minWethToReceive, uint64(block.timestamp));
+    }
+```
+
+Additionally, it might be wise to add a deadline to the function, as there is currently no deadline.
+
+
 ## Low
 
 ### [L-1] `TSwapPool::LiquidityAdded` event has parameters out of order 
