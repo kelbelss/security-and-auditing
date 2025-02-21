@@ -1,6 +1,6 @@
 ---
 title: Protocol Security Review
-author: Kelbels
+author: kelbels
 date: January 27, 2025
 header-includes:
   - \usepackage{titling}
@@ -27,9 +27,8 @@ header-includes:
 
 <!-- Your report starts here! -->
 
-Prepared by: [Kelbels](www.kelbels.dev)
-Lead Auditors: 
-- Kelbels
+Prepared by: [kelbels](www.kelbels.dev)
+
 
 # Table of Contents
 - [Table of Contents](#table-of-contents)
@@ -54,7 +53,7 @@ Protocol does X, Y, Z
 
 # Disclaimer
 
-I, Kelbels, make all effort to find as many vulnerabilities in the code in the given time period, but hold no responsibilities for the findings provided in this document. A security audit by me is not an endorsement of the underlying business or product. The audit was time-boxed and the review of the code was solely on the security aspects of the Solidity implementation of the contracts.
+I, kelbels, make all effort to find as many vulnerabilities in the code in the given time period, but hold no responsibilities for the findings provided in this document. A security audit by me is not an endorsement of the underlying business or product. The audit was time-boxed and the review of the code was solely on the security aspects of the Solidity implementation of the contracts.
 
 # Risk Classification
 
