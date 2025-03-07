@@ -34,4 +34,22 @@ contract RegistryTest is Test {
     /**
      * Code your fuzz test here
      */
+    function test_fuzz_amountToPay(uint256 amountToPay) public {
+        vm.assume(amountToPay >= 1 ether);
+
+        vm.deal(alice, amountToPay);
+        vm.startPrank(alice);
+
+        uint256 aliceBalanceBefore = address(alice).balance;
+
+        registry.register{value: amountToPay}();
+
+        uint256 aliceBalanceAfter = address(alice).balance;
+
+        assertTrue(registry.isRegistered(alice), "Did not register user");
+        assertEq(address(registry).balance, registry.PRICE(), "Unexpected registry balance");
+        assertEq(aliceBalanceAfter, aliceBalanceBefore - registry.PRICE(), "Unexpected user balance");
+    }
+
+    // picks up that balance of registry contract is too much and excess was not returned to Alice
 }
