@@ -13,6 +13,11 @@ contract Registry {
             revert PaymentNotEnough(PRICE, msg.value);
         }
 
+        // fix issue found in fuzz
+        if (msg.value > PRICE) {
+            payable(msg.sender).transfer(msg.value - PRICE);
+        }
+
         registry[msg.sender] = true;
     }
 
